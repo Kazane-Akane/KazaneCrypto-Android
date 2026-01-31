@@ -338,7 +338,7 @@ function saveFile(blob, name) {
     `;
     
     tipDiv.innerHTML = `
-        <p style="margin:0 0 10px 0; font-size:14px;">? 文件处理完成</p>
+        <p style="margin:0 0 10px 0; font-size:14px;">文件处理完成</p>
         <a href="${url}" download="${name}" style="background:var(--primary-blue); color:white; padding:8px 16px; border-radius:4px; text-decoration:none; font-weight:bold; display:inline-block;">点此保存到手机</a>
         <p style="margin:10px 0 0 0; font-size:11px; color:#94a3b8;">如果点击无反应，请长按上方按钮选择“下载链接”</p>
     `;
@@ -353,3 +353,4 @@ function saveFile(blob, name) {
     
     logger("文件已准备就绪，请查看上方下载按钮。");
 }
+
