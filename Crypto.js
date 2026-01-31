@@ -269,15 +269,17 @@ async function runDecrypt(file, pwdInput) {
 }
 
 function saveFile(blob, name) {
-    const a = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    // 延时清理，确保安卓浏览器完成握手
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 2000);
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64Data = e.target.result;
+        const a = document.createElement('a');
+        a.href = base64Data;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => document.body.removeChild(a), 2000);
+    };
+    // 将 Blob 转为 DataURL (Base64)
+    // 注意：如果文件超过 50MB，这种方法在移动端可能会导致内存溢出闪退
+    reader.readAsDataURL(blob);
 }
