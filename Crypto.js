@@ -268,18 +268,57 @@ async function runDecrypt(file, pwdInput) {
     } catch (e) { logger("错误: " + e.message); }
 }
 
+// 修改后的 saveFile 函数，解决了大文件崩溃问题
 function saveFile(blob, name) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const base64Data = e.target.result;
-        const a = document.createElement('a');
-        a.href = base64Data;
-        a.download = name;
-        document.body.appendChild(a);
+    // 使用 ObjectURL 替代 Base64，避免内存溢出
+    const url = URL.createObjectURL(blob);
+    
+    // 1. 创建隐藏的下载链接
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    
+    // 2. 尝试执行自动点击下载
+    try {
         a.click();
-        setTimeout(() => document.body.removeChild(a), 2000);
-    };
-    // 将 Blob 转为 DataURL (Base64)
-    // 注意：如果文件超过 50MB，这种方法在移动端可能会导致内存溢出闪退
-    reader.readAsDataURL(blob);
+    } catch (e) {
+        console.error("自动触发失败", e);
+    }
+
+    // 3. 补救方案：在日志上方弹出明显的“下载按钮”
+    // 这样如果 WebView 拦截了自动点击，用户还可以手动点击保存
+    const logBox = document.getElementById('log');
+    
+    const existingTip = document.getElementById('app-download-tip');
+    if (existingTip) existingTip.remove();
+
+    const tipDiv = document.createElement('div');
+    tipDiv.id = 'app-download-tip';
+    tipDiv.style.cssText = `
+        margin: 15px auto;
+        padding: 15px;
+        background: rgba(0, 132, 255, 0.2);
+        border: 1px solid var(--primary-blue);
+        border-radius: 8px;
+        text-align: center;
+        color: white;
+    `;
+    
+    tipDiv.innerHTML = `
+        <p style="margin:0 0 10px 0; font-size:14px;">✅ 文件处理完成</p>
+        <a href="${url}" download="${name}" style="background:var(--primary-blue); color:white; padding:8px 16px; border-radius:4px; text-decoration:none; font-weight:bold; display:inline-block;">点此保存到手机</a>
+        <p style="margin:10px 0 0 0; font-size:11px; color:#94a3b8;">如果点击无反应，请长按上方按钮选择“下载链接”</p>
+    `;
+
+    logBox.parentNode.insertBefore(tipDiv, logBox);
+
+    // 4. 延迟释放 URL，确保下载任务已启动
+    setTimeout(() => {
+        document.body.removeChild(a);
+        // 注意：不要立即调用 URL.revokeObjectURL(url)，否则下载会中断
+    }, 30000);
+    
+    logger("文件已准备就绪，请查看上方下载按钮。");
 }
+
