@@ -270,36 +270,54 @@ async function runDecrypt(file, pwdInput) {
 
 // 移动端专用下载触发逻辑
 function saveFile(blob, name) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const dataUrl = e.target.result;
-        
-        // 检查浏览器是否支持 Web Share API (部分现代安卓系统 WebView 支持)
-        if (navigator.share) {
-            const file = new File([blob], name, { type: blob.type });
-            navigator.share({
-                files: [file],
-                title: '保存加密文件',
-                text: '这是您生成的加密文件',
-            }).then(() => {
-                logger("分享成功，文件已保存。");
-            }).catch((err) => {
-                // 如果分享失败，降级到显示手动保存区域
-                showManualArea(dataUrl, name);
-            });
-        } else {
-            showManualArea(dataUrl, name);
-        }
-    };
-    reader.readAsDataURL(blob);
-}
+    const url = URL.createObjectURL(blob);
+    
+    // 1. 创建隐藏的下载链接
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    
+    // 2. 尝试执行点击
+    try {
+        a.click();
+    } catch (e) {
+        console.error("自动触发失败", e);
+    }
 
-function showManualArea(dataUrl, name) {
+    // 3. 在 Web URL 模式下，为了防止 WebView 没反应，
+    // 我们在日志上方弹出一个明显的“下载卡片”作为双保险
     const logBox = document.getElementById('log');
-    const div = document.createElement('div');
-    div.style.cssText = "padding:15px; background:#22c55e; color:white; border-radius:8px; margin:10px 0; text-align:center;";
-    div.innerHTML = `<p style="margin:0 0 10px 0">点击或长按下方按钮保存</p>
-                     <a href="${dataUrl}" download="${name}" style="color:white; font-weight:bold; word-break:break-all;">【保存: ${name}】</a>`;
-    logBox.parentNode.insertBefore(div, logBox);
-    logger("由于权限限制，请使用上方的绿色区域进行保存。");
+    
+    // 清除之前的下载提示
+    const existingTip = document.getElementById('app-download-tip');
+    if (existingTip) existingTip.remove();
+
+    const tipDiv = document.createElement('div');
+    tipDiv.id = 'app-download-tip';
+    tipDiv.style.cssText = `
+        margin: 15px auto;
+        padding: 15px;
+        background: rgba(0, 132, 255, 0.2);
+        border: 1px solid var(--primary-blue);
+        border-radius: 8px;
+        text-align: center;
+        color: white;
+    `;
+    
+    // 如果是 Web URL 模式，用户点击这个链接通常会被 App 的下载管理器捕获
+    tipDiv.innerHTML = `
+        <p style="margin:0 0 10px 0; font-size:14px;">✅ 处理完成，若未自动弹出下载：</p>
+        <a href="${url}" download="${name}" style="background:var(--primary-blue); color:white; padding:8px 16px; border-radius:4px; text-decoration:none; font-weight:bold;">点此手动保存文件</a>
+    `;
+
+    logBox.parentNode.insertBefore(tipDiv, logBox);
+
+    // 4. 延迟释放 URL 内存
+    setTimeout(() => {
+        document.body.removeChild(a);
+        // 注意：在移动端，如果revoke过快，下载会中断。这里保留长一点或不手动释放（由页面刷新释放）
+    }, 10000);
+    
+    logger("文件已生成。如果点击没反应，请长按保存按钮。");
 }
