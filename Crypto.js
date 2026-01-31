@@ -255,19 +255,38 @@ async function runDecrypt(file, pwdInput) {
             progress.style.width = Math.round((processed / totalSize) * 100) + "%";
         }
 
-        const customName = document.getElementById('customName').value;
-        let finalName;
-        if (customName) {
-            finalName = customName.toLowerCase().endsWith(`.${format.toLowerCase()}`) ? customName : `${customName}.${format}`;
-        } else {
-            finalName = file.name.replace(/\.kazanecrypto$/i, '') + '.' + format;
-        }
+            const customName = document.getElementById('customName').value;
+            let finalName;
 
-        saveFile(new Blob(decryptedChunks), finalName);
-        logger("解密任务成功完成");
+            if (customName) {
+                // 检查用户自定义名称是否已手动输入了扩展名
+                const customNameLower = customName.toLowerCase();
+                const formatLower = format.toLowerCase();
+                
+                if (customNameLower.endsWith(`.${formatLower}`)) {
+                    finalName = customName;
+                } else {
+                    finalName = `${customName}.${format}`;
+                }
+            } else {
+                const originalName = currentFile.name; // 使用当前选中的原始文件名
+                
+                // 检查原始文件名是否以 .kazanecrypto 结尾（不区分大小写）
+                if (originalName.toLowerCase().endsWith('.kazanecrypto')) {
+                    // 核心修复：如果是加密文件，去掉 .kazanecrypto 后缀并替换为原始格式
+                    finalName = originalName.substring(0, originalName.lastIndexOf('.')) + '.' + format;
+                } else {
+                    // 如果文件名不标准，直接追加格式
+                    finalName = originalName + '.' + format;
+                }
+            }
+
+            saveFile(new Blob(decryptedChunks), finalName);
+            logger("解密任务成功完成");
     } catch (e) { logger("错误: " + e.message); }
 }
 
+// 移动端专用下载触发逻辑
 // 修改后的 saveFile 函数，解决了大文件崩溃问题
 function saveFile(blob, name) {
     // 使用 ObjectURL 替代 Base64，避免内存溢出
@@ -321,4 +340,3 @@ function saveFile(blob, name) {
     
     logger("文件已准备就绪，请查看上方下载按钮。");
 }
-
